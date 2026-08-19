@@ -1,0 +1,51 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Setup Project
+      run: |
+        mkdir -p app/src/main/java/com/example/autocall5
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/xml
+        
+        [ -f MainActivity.kt ] && mv MainActivity.kt app/src/main/java/com/example/autocall5/
+        [ -f AutoCallAccessibilityService.kt ] && mv AutoCallAccessibilityService.kt app/src/main/java/com/example/autocall5/
+        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/
+        [ -f strings.xml ] && mv strings.xml app/src/main/res/values/
+        [ -f themes.xml ] && mv themes.xml app/src/main/res/values/
+        [ -f accessibility_service_config.xml ] && mv accessibility_service_config.xml app/src/main/res/xml/
+
+        echo 'pluginManagement { repositories { google(); mavenCentral(); gradlePluginPortal() } }' > settings.gradle.kts
+        echo 'rootProject.name = "AutoCall5"' >> settings.gradle.kts
+        echo 'include(":app")' >> settings.gradle.kts
+
+        echo 'plugins { id("com.android.application") version "8.1.1" apply false; id("org.jetbrains.kotlin.android") version "1.8.10" apply false }' > build.gradle.kts
+
+        echo 'plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }' > app/build.gradle.kts
+        echo 'android { compileSdk = 34; namespace = "com.example.autocall5"; defaultConfig { applicationId = "com.example.autocall5"; minSdk = 24; targetSdk = 34; versionCode = 1; versionName = "1.0" } }' >> app/build.gradle.kts
+        echo 'dependencies { implementation("androidx.core:core-ktx:1.12.0"); implementation("androidx.appcompat:appcompat:1.6.1"); implementation("com.google.android.material:material:1.11.0") }' >> app/build.gradle.kts
+
+    - name: Build
+      run: gradle assembleDebug
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
