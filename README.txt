@@ -1,19 +1,45 @@
-AUTO GỌI 5 - ANDROID
+name: Build Android APK
 
-Mục tiêu:
-Gọi -> Gọi người nhận -> thêm số 5 -> gọi -> 12 giây -> tắt -> quay lại app -> vuốt -> đơn tiếp theo.
+on:
+  push:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
 
-CÀI:
-1. Mở thư mục AutoCall5 bằng Android Studio.
-2. Chờ Gradle Sync hoàn tất.
-3. Build > Build App Bundle(s) / APK(s) > Build APK(s).
-4. Cài APK lên điện thoại.
-5. Mở Auto Gọi 5 -> Mở Trợ năng -> bật "Auto Gọi 5".
-6. Quay lại app giao hàng, đặt màn hình ở danh sách đơn.
-7. Mở Auto Gọi 5 và bấm BẬT TỰ ĐỘNG.
-8. Có thể bấm DỪNG để dừng.
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
 
-LƯU Ý:
-- Đây là bản khung tự động hóa. Giao diện trình gọi điện và app giao hàng có thể dùng text/package khác nhau, nên có thể cần chỉnh nhận diện sau khi test.
-- Trước khi chạy nhiều đơn, hãy test 1 đơn để kiểm tra việc thêm số 5, nút gọi, nút tắt và thao tác vuốt.
-- Không dùng để gọi các số khi không có quyền/không có mục đích giao hàng hợp lệ.
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Arrange files
+      run: |
+        mkdir -p app/src/main/java/com/example/autocall5
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/xml
+        
+        [ -f MainActivity.kt ] && mv MainActivity.kt app/src/main/java/com/example/autocall5/
+        [ -f AutoCallAccessibilityService.kt ] && mv AutoCallAccessibilityService.kt app/src/main/java/com/example/autocall5/
+        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/
+        [ -f strings.xml ] && mv strings.xml app/src/main/res/values/
+        [ -f themes.xml ] && mv themes.xml app/src/main/res/values/
+        [ -f accessibility_service_config.xml ] && mv accessibility_service_config.xml app/src/main/res/xml/
+
+        echo 'plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }' > app/build.gradle.kts
+        echo 'android { compileSdk = 34; defaultConfig { applicationId = "com.example.autocall5"; minSdk = 24; targetSdk = 34; versionCode = 1; versionName = "1.0" } }' >> app/build.gradle.kts
+        echo 'dependencies { implementation("androidx.core:core-ktx:1.12.0"); implementation("androidx.appcompat:appcompat:1.6.1"); implementation("com.google.android.material:material:1.11.0") }' >> app/build.gradle.kts
+
+    - name: Build
+      run: ./gradlew assembleDebug || gradle assembleDebug
+
+    - name: Upload
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
