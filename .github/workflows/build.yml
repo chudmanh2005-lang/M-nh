@@ -1,0 +1,49 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ "main", "master", "chủ yếu" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+
+    - name: Sắp xếp lại cấu trúc thư mục
+      run: |
+        mkdir -p app/src/main/java/com/example/autocall5
+        mkdir -p app/src/main/res/values
+        mkdir -p app/src/main/res/xml
+        
+        [ -f MainActivity.kt ] && mv MainActivity.kt app/src/main/java/com/example/autocall5/
+        [ -f AutoCallAccessibilityService.kt ] && mv AutoCallAccessibilityService.kt app/src/main/java/com/example/autocall5/
+        [ -f AndroidManifest.xml ] && mv AndroidManifest.xml app/src/main/
+        [ -f strings.xml ] && mv strings.xml app/src/main/res/values/
+        [ -f themes.xml ] && mv themes.xml app/src/main/res/values/
+        [ -f accessibility_service_config.xml ] && mv accessibility_service_config.xml app/src/main/res/xml/
+
+        echo 'plugins { id("com.android.application"); id("org.jetbrains.kotlin.android") }' > app/build.gradle.kts
+        echo 'android { compileSdk = 34; defaultConfig { applicationId = "com.example.autocall5"; minSdk = 24; targetSdk = 34; versionCode = 1; versionName = "1.0" } }' >> app/build.gradle.kts
+        echo 'dependencies { implementation("androidx.core:core-ktx:1.12.0"); implementation("androidx.appcompat:appcompat:1.6.1"); implementation("com.google.android.material:material:1.11.0") }' >> app/build.gradle.kts
+
+    - name: Setup Gradle
+      uses: gradle/actions/setup-gradle@v3
+
+    - name: Biên dịch file APK
+      run: gradle assembleDebug
+
+    - name: Xuất file APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
+        
